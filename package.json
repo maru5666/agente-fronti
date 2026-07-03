@@ -2,6 +2,10 @@
   "name": "fronti-workspace",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "fronti-admin",
+    "fronti-backend"
+  ],
   "scripts": {
     "lint": "npm --prefix fronti-admin run lint && npm run check:encoding",
     "type-check": "npm --prefix fronti-admin run type-check && npm --prefix fronti-backend run type-check",
@@ -10,7 +14,7 @@
     "verify:stability:dev": "node scripts/stability-check.js --dev-smoke",
     "verify:dev": "node scripts/stability-check.js --dev-smoke-only",
     "check:encoding": "node scripts/check-encoding.js",
-    "build:backend": "npm --prefix fronti-backend run build",
+    "build:backend": "npm --workspace fronti-backend run build",
     "build:admin": "node scripts/build-admin.js",
     "dev:backend": "npm --prefix fronti-backend run start:dev",
     "dev:admin": "npm --prefix fronti-admin run dev -- -p 3002"

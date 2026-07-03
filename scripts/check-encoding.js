@@ -82,6 +82,7 @@ function hasEncodingDamage(line) {
     line.includes('https://') ||
     line.includes('DATABASE_URL') ||
     line.includes('?query=') ||
+    line.includes('?mensaje=') ||
     line.includes('searchParams') ||
     line.includes('?.') ||
     line.includes('?:') ||

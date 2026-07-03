@@ -5,7 +5,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build",
+    "build": "node ./node_modules/@nestjs/cli/bin/nest.js build",
     "type-check": "tsc -p tsconfig.build.json --noEmit",
     "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.prisma\"",
     "start": "nest start",
