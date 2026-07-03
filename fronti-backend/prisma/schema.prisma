@@ -1,0 +1,460 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SenderType {
+  CUSTOMER
+  BUSINESS
+  FRONTI
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  paid
+  preparing
+  out_for_delivery
+  delivered
+  cancelled
+  pendiente_datos
+  pendiente_confirmacion_cliente
+  pendiente_confirmacion_operador
+  pendiente_pago
+  pago_en_revision
+  pago_confirmado
+  pendiente_delivery
+  delivery_asignado
+  en_preparacion
+  en_camino
+  entregado
+  cancelado
+}
+
+enum InternalNotificationType {
+  DELIVERY_REVIEW_REQUIRED
+  ORDER_CONFIRMED
+  PAYMENT_REVIEW_REQUIRED
+  HUMAN_SUPPORT_REQUIRED
+}
+
+enum InternalNotificationStatus {
+  pendiente_operador
+  en_revision
+  resuelta
+  cancelada
+}
+
+enum InternalNotificationPriority {
+  baja
+  media
+  alta
+  urgente
+}
+
+model Company {
+  id                String            @id @default(uuid())
+  workspaceCode     String            @unique
+  name              String
+  commercialName    String?
+  rif               String            @unique
+  phone             String
+  email             String?           @unique
+  passwordHash      String?
+  address           String?
+  logo              String?
+  primaryColor      String?
+  catalogBanner     String?
+  latitude          Decimal?          @db.Decimal(10, 7)
+  longitude         Decimal?          @db.Decimal(10, 7)
+  establishmentName String?
+  establishmentAddress String?
+  establishmentLatitude Decimal?      @db.Decimal(10, 7)
+  establishmentLongitude Decimal?     @db.Decimal(10, 7)
+  googleMapsReference String?
+  baseDeliveryZone String?
+  deliveryBaseFeeUsd Decimal?         @db.Decimal(12, 2)
+  deliveryPricePerKmUsd Decimal?      @db.Decimal(12, 2)
+  deliveryMinimumFeeUsd Decimal?      @db.Decimal(12, 2)
+  deliveryFarZoneSurchargeUsd Decimal? @db.Decimal(12, 2)
+  deliveryFreeFromUsd Decimal?        @db.Decimal(12, 2)
+  createdAt         DateTime          @default(now())
+  branches          CompanyBranch[]
+  brands            Brand[]
+  products          Product[]
+  promotions        Promotion[]
+  sales             Sale[]
+  messages          ChatMessage[]
+  agentLogs         AgentLog[]
+  conversationStates ConversationState[]
+  paymentMethods    PaymentMethod[]
+  deliveryZones     DeliveryZone[]
+  deliveryAddressCache DeliveryAddressCache[]
+  orders            Order[]
+  customerAddresses CustomerAddress[]
+  internalNotifications InternalNotification[]
+  paymentProofs     PaymentProof[]
+}
+
+model Brand {
+  id          String    @id @default(uuid())
+  companyId   String
+  name        String
+  logo        String?
+  description String?
+  createdAt   DateTime  @default(now())
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  products    Product[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Product {
+  id          String      @id @default(uuid())
+  companyId   String
+  brandId     String?
+  name        String
+  description String?
+  category    String?
+  tags        String[]    @default([])
+  mainImage   String?
+  coverImage  String?
+  galleryImages String[]  @default([])
+  priceUsd    Decimal     @db.Decimal(12, 2)
+  currencyBase String     @default("USD") @db.VarChar(3)
+  stock       Int
+  minStock    Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  brand       Brand?      @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  promotions  Promotion[]
+  saleItems   SaleItem[]
+  orderItems  OrderItem[]
+
+  @@index([companyId])
+  @@index([companyId, brandId])
+  @@index([companyId, name])
+  @@index([companyId, stock])
+  @@index([companyId, isActive, stock])
+}
+
+model CompanyBranch {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  address     String?
+  latitude    Decimal? @db.Decimal(10, 7)
+  longitude   Decimal? @db.Decimal(10, 7)
+  phone       String?
+  isMain      Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, isActive])
+}
+
+model Promotion {
+  id              String   @id @default(uuid())
+  companyId       String
+  productId       String?
+  title           String
+  description     String?
+  discountPercent Decimal  @db.Decimal(5, 2)
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([companyId, isActive, startDate, endDate])
+}
+
+model Sale {
+  id        String     @id @default(uuid())
+  companyId String
+  totalUsd  Decimal    @db.Decimal(12, 2)
+  totalBs   Decimal    @db.Decimal(14, 2)
+  createdAt DateTime   @default(now())
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  items     SaleItem[]
+
+  @@index([companyId])
+  @@index([companyId, createdAt])
+}
+
+model SaleItem {
+  id           String  @id @default(uuid())
+  saleId       String
+  productId    String
+  quantity     Int
+  unitPriceUsd Decimal @db.Decimal(12, 2)
+  unitPriceBs  Decimal @db.Decimal(14, 2)
+  subtotalUsd  Decimal @db.Decimal(12, 2)
+  subtotalBs   Decimal @db.Decimal(14, 2)
+  sale         Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product      Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model ChatMessage {
+  id          String     @id @default(uuid())
+  companyId   String
+  senderType  SenderType @default(CUSTOMER)
+  senderPhone String
+  message     String
+  response    String
+  createdAt   DateTime   @default(now())
+  company     Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, senderPhone])
+}
+
+model ConversationState {
+  id            String   @id @default(uuid())
+  companyId     String
+  senderPhone   String
+  currentIntent String?
+  awaitingField String?
+  metadata      Json?
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, senderPhone])
+  @@index([companyId])
+  @@index([companyId, senderPhone])
+}
+
+model AgentLog {
+  id                String   @id @default(uuid())
+  companyId         String
+  senderPhone       String
+  message           String
+  intent            String
+  tool              String
+  skill             String?
+  toolResult        Json?
+  generatedResponse String
+  criticReview      Json?
+  finalResponse     String
+  createdAt         DateTime @default(now())
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, senderPhone])
+  @@index([companyId, createdAt])
+}
+
+model PaymentMethod {
+  id          String   @id @default(uuid())
+  companyId   String
+  name        String
+  type        String
+  currency    String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders      Order[]
+
+  @@index([companyId])
+  @@index([companyId, isActive])
+}
+
+model DeliveryZone {
+  id              String   @id @default(uuid())
+  companyId       String
+  name            String
+  description     String?
+  priceUsd        Decimal  @db.Decimal(12, 2)
+  priceBs         Decimal  @db.Decimal(14, 2)
+  fixedFeeUsd     Decimal? @db.Decimal(12, 2)
+  pricePerKmUsd   Decimal? @db.Decimal(12, 2)
+  minDistanceKm   Decimal? @db.Decimal(8, 2)
+  maxDistanceKm   Decimal? @db.Decimal(8, 2)
+  estimatedTime   String
+  color           String?
+  priority        Int      @default(0)
+  localLatitude   Decimal? @db.Decimal(10, 7)
+  localLongitude  Decimal? @db.Decimal(10, 7)
+  localRadiusKm   Decimal? @db.Decimal(8, 2)
+  city            String?
+  state           String?
+  country         String?
+  distanceFromCompanyKm Decimal? @db.Decimal(8, 2)
+  polygonCoordinates Json?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders          Order[]
+
+  @@index([companyId])
+  @@index([companyId, isActive])
+  @@index([companyId, priority])
+}
+
+model DeliveryAddressCache {
+  id               String   @id @default(uuid())
+  companyId        String
+  query            String
+  normalizedQuery  String
+  formattedAddress String
+  latitude         Decimal? @db.Decimal(10, 7)
+  longitude        Decimal? @db.Decimal(10, 7)
+  source           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, normalizedQuery])
+  @@index([companyId])
+}
+
+model Order {
+  id                       String         @id @default(uuid())
+  companyId                String
+  customerName             String?
+  customerPhone            String
+  customerAddress          String?
+  customerLatitude         Decimal?       @db.Decimal(10, 7)
+  customerLongitude        Decimal?       @db.Decimal(10, 7)
+  validatedAddress         String?
+  deliveryZoneId           String?
+  paymentMethodId          String?
+  subtotalUsd              Decimal        @db.Decimal(12, 2)
+  subtotalBs               Decimal        @db.Decimal(14, 2)
+  deliveryFeeUsd           Decimal        @db.Decimal(12, 2)
+  deliveryFeeBs            Decimal        @db.Decimal(14, 2)
+  totalUsd                 Decimal        @db.Decimal(12, 2)
+  totalBs                  Decimal        @db.Decimal(14, 2)
+  distanceKm               Decimal?       @db.Decimal(8, 2)
+  estimatedDeliveryMinutes Int?
+  googleMapsLink           String?
+  status                   OrderStatus    @default(pending)
+  stockDiscounted          Boolean        @default(false)
+  createdAt                DateTime       @default(now())
+  company                  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  deliveryZone             DeliveryZone?  @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  paymentMethod            PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  items                    OrderItem[]
+  internalNotifications    InternalNotification[]
+  paymentProofs            PaymentProof[]
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, status, createdAt])
+  @@index([companyId, customerPhone])
+  @@index([companyId, createdAt])
+}
+
+model PaymentProof {
+  id              String   @id @default(uuid())
+  companyId       String
+  orderId         String?
+  customerPhone   String
+  fileUrl         String?
+  reference       String?
+  amountUsd       Decimal? @db.Decimal(12, 2)
+  amountBs        Decimal? @db.Decimal(14, 2)
+  status          String   @default("pago_en_revision")
+  createdAt       DateTime @default(now())
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([companyId, customerPhone])
+  @@index([companyId, status])
+  @@index([orderId])
+}
+
+model InternalNotification {
+  id              String                     @id @default(uuid())
+  companyId       String
+  orderId         String?
+  type            InternalNotificationType
+  title           String
+  message         String
+  priority        InternalNotificationPriority @default(media)
+  status          InternalNotificationStatus @default(pendiente_operador)
+  customerName    String?
+  customerPhone   String?
+  customerAddress String?
+  gpsLatitude     Decimal?                   @db.Decimal(10, 7)
+  gpsLongitude    Decimal?                   @db.Decimal(10, 7)
+  estimatedAmountUsd Decimal?                @db.Decimal(12, 2)
+  payload         Json?
+  createdAt       DateTime                   @default(now())
+  updatedAt       DateTime                   @updatedAt
+  company         Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order           Order?                     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, type])
+  @@index([companyId, createdAt])
+  @@index([orderId])
+}
+
+model OrderItem {
+  id           String  @id @default(uuid())
+  orderId      String
+  productId    String
+  quantity     Int
+  unitPriceUsd Decimal @db.Decimal(12, 2)
+  unitPriceBs  Decimal @db.Decimal(14, 2)
+  subtotalUsd  Decimal @db.Decimal(12, 2)
+  subtotalBs   Decimal @db.Decimal(14, 2)
+  order        Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product      Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model CustomerAddress {
+  id               String   @id @default(uuid())
+  companyId        String
+  customerPhone    String
+  label            String
+  address          String
+  formattedAddress String?
+  neighborhood     String?
+  city             String?
+  state            String?
+  country          String?
+  latitude         Decimal? @db.Decimal(10, 7)
+  longitude        Decimal? @db.Decimal(10, 7)
+  isFavorite       Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, customerPhone])
+  @@index([companyId, customerPhone, isFavorite])
+}
+
+model BcvRate {
+  id          String   @id @default(uuid())
+  currency    String
+  rate        Decimal  @db.Decimal(14, 6)
+  source      String
+  imageUrl    String?
+  extractionMethod String?
+  publishedAt DateTime
+  fetchedAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([currency, publishedAt])
+  @@index([currency, fetchedAt])
+}

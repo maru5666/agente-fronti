@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Builds and caches
+.next/
+.next-*/
+dist/
+out/
+.npm-cache/
+**/.npm-cache/
+tsconfig.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Logs and temporary tunnel output
+*.log
+*.err
+*.out.log
+backend-tunnel.*
+frontend-tunnel.*
+localhostrun-*.*
+localtunnel-*.*
+
+# Generated audits and local artifacts
+fronti-admin-ui-audit/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

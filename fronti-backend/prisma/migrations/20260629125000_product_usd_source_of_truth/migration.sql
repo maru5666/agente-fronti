@@ -1,0 +1,2 @@
+ALTER TABLE "Product" ADD COLUMN "currencyBase" VARCHAR(3) NOT NULL DEFAULT 'USD';
+ALTER TABLE "Product" DROP COLUMN "priceBs";

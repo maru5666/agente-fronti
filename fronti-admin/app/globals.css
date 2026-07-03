@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, transparent 32rem),
+    linear-gradient(135deg, #05060a 0%, #0b0d12 42%, #111827 100%);
+  color: #f8fafc;
+  font-family: Inter, Satoshi, "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+::selection {
+  background: rgba(139, 92, 246, 0.38);
+}
+
+.glass-panel {
+  border: 1px solid rgba(248, 250, 252, 0.10);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035)),
+    rgba(12, 15, 22, 0.84);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.premium-grid {
+  background-image:
+    linear-gradient(rgba(248, 250, 252, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(248, 250, 252, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, rgba(17, 24, 39, 0.82), rgba(139, 92, 246, 0.2), rgba(17, 24, 39, 0.82));
+  background-size: 200% 100%;
+  animation: shimmer 1.25s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
