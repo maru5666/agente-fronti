@@ -120,10 +120,13 @@ function getPublicAssetUrl(url?: string | null) {
     return null;
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
-  if (!apiUrl) {
-    return url;
-  }
+  const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
+  const isConfiguredLocalhost =
+    configuredApiUrl?.includes('localhost') || configuredApiUrl?.includes('127.0.0.1');
+  const apiUrl =
+    typeof window !== 'undefined' && isConfiguredLocalhost && window.location.hostname !== 'localhost'
+      ? '/api/backend'
+      : configuredApiUrl || '/api/backend';
 
   if (url.startsWith('http://localhost:3000')) {
     return url.replace('http://localhost:3000', apiUrl);

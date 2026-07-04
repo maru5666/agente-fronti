@@ -7,10 +7,14 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   async rewrites() {
+    if (!process.env.FRONTI_BACKEND_URL) {
+      return [];
+    }
+
     return [
       {
         source: '/api/backend/:path*',
-        destination: `${process.env.FRONTI_BACKEND_URL || 'http://localhost:3000'}/:path*`,
+        destination: `${process.env.FRONTI_BACKEND_URL}/:path*`,
       },
     ];
   },

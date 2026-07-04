@@ -3,5 +3,15 @@
   "framework": "nextjs",
   "installCommand": "npm install",
   "buildCommand": "npm run build",
-  "outputDirectory": "fronti-admin/.next-build"
+  "outputDirectory": "fronti-admin/.next-build",
+  "functions": {
+    "api/backend/[...path].js": {
+      "maxDuration": 30,
+      "includeFiles": [
+        "fronti-backend/dist/**",
+        "fronti-backend/node_modules/.prisma/client/**",
+        "fronti-backend/uploads/**"
+      ]
+    }
+  }
 }

@@ -122,8 +122,30 @@ type DeliveryEstimatePayload = {
   orderSubtotalUsd?: number;
 };
 
+function getApiBaseUrl() {
+  const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
+
+  if (!configuredUrl) {
+    return '/api/backend';
+  }
+
+  if (typeof window !== 'undefined') {
+    const isBrowserOnLocalhost = ['localhost', '127.0.0.1', '::1'].includes(
+      window.location.hostname,
+    );
+    const isConfiguredLocalhost =
+      configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1');
+
+    if (isConfiguredLocalhost && !isBrowserOnLocalhost) {
+      return '/api/backend';
+    }
+  }
+
+  return configuredUrl;
+}
+
 export const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL?.trim() || '/api/backend',
+  baseURL: getApiBaseUrl(),
   timeout: 12000,
 });
 
