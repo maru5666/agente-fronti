@@ -45,7 +45,7 @@ export class FrontiService {
   ) {}
 
   async chat(chatDto: ChatDto) {
-    await this.companiesService.ensureExists(chatDto.companyId);
+    chatDto = await this.normalizeChatDto(chatDto);
 
     const effectiveMessage =
       chatDto.message ??
@@ -222,6 +222,21 @@ export class FrontiService {
 
   listSkills() {
     return this.skillsRegistry.list();
+  }
+
+  private async normalizeChatDto(chatDto: ChatDto): Promise<ChatDto> {
+    const company = await this.companiesService.findByAccessCode(chatDto.companyId);
+    const senderPhone =
+      chatDto.senderPhone?.trim() ||
+      chatDto.customerPhone?.trim() ||
+      'demo-cliente';
+
+    return {
+      ...chatDto,
+      companyId: company.id,
+      senderPhone,
+      customerPhone: chatDto.customerPhone ?? senderPhone,
+    };
   }
 
   private async executeTool(

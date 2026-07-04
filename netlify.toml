@@ -1,0 +1,17 @@
+[build]
+  command = "npm run build"
+  publish = "fronti-admin/.next-build"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  included_files = [
+    "fronti-backend/dist/**",
+    "fronti-backend/node_modules/.prisma/client/**",
+    "fronti-backend/uploads/**"
+  ]
+
+[[redirects]]
+  from = "/api/backend/*"
+  to = "/.netlify/functions/backend/:splat"
+  status = 200

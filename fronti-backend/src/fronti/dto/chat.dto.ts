@@ -5,16 +5,16 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ChatDto {
-  @IsUUID()
+  @IsString()
+  @IsNotEmpty()
   companyId: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   senderPhone: string;
 
   @IsString()
