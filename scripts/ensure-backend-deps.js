@@ -14,10 +14,15 @@ if (requiredPaths.every((path) => existsSync(path))) {
 }
 
 console.log('Instalando dependencias locales del backend para Prisma/Nest...');
-const result = spawnSync('npm', ['ci', '--workspaces=false'], {
+const command = 'npm';
+const args = ['ci', '--workspaces=false'];
+const executable = process.platform === 'win32' ? 'cmd.exe' : command;
+const finalArgs =
+  process.platform === 'win32' ? ['/d', '/s', '/c', command, ...args] : args;
+const result = spawnSync(executable, finalArgs, {
   cwd: backendDir,
   stdio: 'inherit',
-  shell: process.platform === 'win32',
+  shell: false,
 });
 
 process.exit(result.status ?? 1);

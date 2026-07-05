@@ -9,7 +9,7 @@
   "scripts": {
     "lint": "npm --prefix fronti-admin run lint && npm run check:encoding",
     "type-check": "npm --prefix fronti-admin run type-check && npm --prefix fronti-backend run type-check",
-    "build": "npm run build:backend && npm run build:admin",
+    "build": "node scripts/build-workspace.js",
     "verify:stability": "node scripts/stability-check.js",
     "verify:stability:dev": "node scripts/stability-check.js --dev-smoke",
     "verify:dev": "node scripts/stability-check.js --dev-smoke-only",
@@ -18,5 +18,8 @@
     "build:admin": "node scripts/build-admin.js",
     "dev:backend": "npm --prefix fronti-backend run start:dev",
     "dev:admin": "npm --prefix fronti-admin run dev -- -p 3002"
+  },
+  "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.15.12"
   }
 }

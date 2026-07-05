@@ -1,10 +1,14 @@
 [build]
   command = "npm run build"
-  publish = "fronti-admin/.next-build"
+  publish = "fronti-admin/.next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--include=dev"
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
+  node_bundler = "nft"
   included_files = [
     "fronti-backend/dist/**",
     "fronti-backend/node_modules/.prisma/client/**",
@@ -15,3 +19,6 @@
   from = "/api/backend/*"
   to = "/.netlify/functions/backend/:splat"
   status = 200
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

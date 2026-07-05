@@ -3,7 +3,7 @@ const { spawnSync } = require('child_process');
 
 const root = path.resolve(__dirname, '..');
 const adminDir = path.join(root, 'fronti-admin');
-const distDir = process.env.NEXT_DIST_DIR || '.next-build';
+const distDir = process.env.NEXT_DIST_DIR || '.next';
 const command = process.platform === 'win32' ? 'cmd.exe' : 'npm';
 const args = process.platform === 'win32' ? ['/d', '/s', '/c', 'npm run build'] : ['run', 'build'];
 
