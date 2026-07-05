@@ -136,7 +136,7 @@ function getApiBaseUrl() {
       }
     }
 
-    return 'http://localhost:3000';
+    return '/api/backend';
   }
 
   if (typeof window !== 'undefined') {
@@ -147,7 +147,7 @@ function getApiBaseUrl() {
       configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1');
 
     if (isConfiguredLocalhost && !isBrowserOnLocalhost) {
-      return configuredUrl;
+      return '/api/backend';
     }
   }
 

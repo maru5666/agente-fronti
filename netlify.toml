@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build:admin"
+  publish = "fronti-admin/.next"
+  functions = "netlify/functions"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "/api/backend/*"
+  to = "/.netlify/functions/backend/:splat"
+  status = 200
