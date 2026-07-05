@@ -56,11 +56,11 @@ exports.handler = async (event) => {
     }
 
     if (method === 'GET' && route === `/products/company/${COMPANY.id}`) {
-      return response(200, PRODUCTS);
+      return response(200, getCatalogProducts());
     }
 
     if (method === 'GET' && (route === '/api/products' || route === '/products')) {
-      return response(200, PRODUCTS.filter((product) => product.companyId === COMPANY.id));
+      return response(200, getCatalogProducts());
     }
 
     if (method === 'GET' && (route === '/api/inventory' || route === '/inventory')) {
@@ -259,6 +259,24 @@ function corsHeaders(contentType) {
 
 function isLocalUrl(url) {
   return /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(url);
+}
+
+function getCatalogProducts() {
+  return PRODUCTS
+    .filter((product) => product.companyId === COMPANY.id)
+    .map((product) => {
+      const { galleryImages, brand, ...catalogProduct } = product;
+      return {
+        ...catalogProduct,
+        galleryImages: [],
+        brand: brand
+          ? {
+              ...brand,
+              logo: null,
+            }
+          : null,
+      };
+    });
 }
 
 function composeFrontiReply(body) {
