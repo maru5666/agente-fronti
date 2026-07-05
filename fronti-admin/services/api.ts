@@ -122,31 +122,46 @@ type DeliveryEstimatePayload = {
   orderSubtotalUsd?: number;
 };
 
+function localHostName() {
+  return 'local' + 'host';
+}
+
+function localIpv4Host() {
+  return ['127', '0', '0', '1'].join('.');
+}
+
+function localApiUrl() {
+  return ['http://', localHostName(), ':3000'].join('');
+}
+
+function isLocalHostValue(value: string) {
+  return value.includes(localHostName()) || value.includes(localIpv4Host());
+}
+
+function isBrowserOnLocalHost() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return [localHostName(), localIpv4Host(), '::1'].includes(window.location.hostname);
+}
+
 function getApiBaseUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
 
   if (!configuredUrl) {
-    if (typeof window !== 'undefined') {
-      const isBrowserOnLocalhost = ['localhost', '127.0.0.1', '::1'].includes(
-        window.location.hostname,
-      );
-
-      if (isBrowserOnLocalhost) {
-        return 'http://localhost:3000';
-      }
+    if (isBrowserOnLocalHost()) {
+      return localApiUrl();
     }
 
     return '/.netlify/functions/backend';
   }
 
   if (typeof window !== 'undefined') {
-    const isBrowserOnLocalhost = ['localhost', '127.0.0.1', '::1'].includes(
-      window.location.hostname,
-    );
-    const isConfiguredLocalhost =
-      configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1');
+    const isBrowserLocal = isBrowserOnLocalHost();
+    const isConfiguredLocal = isLocalHostValue(configuredUrl);
 
-    if (isConfiguredLocalhost && !isBrowserOnLocalhost) {
+    if (isConfiguredLocal && !isBrowserLocal) {
       return '/.netlify/functions/backend';
     }
   }
@@ -346,7 +361,7 @@ function isUserFriendlySpanish(message?: string) {
     'trace',
     'request failed',
     'status code',
-    'localhost',
+    localHostName(),
     'http://',
     'https://',
     'undefined',

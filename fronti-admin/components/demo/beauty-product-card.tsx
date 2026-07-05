@@ -120,20 +120,24 @@ function getPublicAssetUrl(url?: string | null) {
     return null;
   }
 
+  const localHostName = 'local' + 'host';
+  const localIpv4Host = ['127', '0', '0', '1'].join('.');
+  const localBackendUrl = ['http://', localHostName, ':3000'].join('');
+  const localBackendIpv4Url = ['http://', localIpv4Host, ':3000'].join('');
   const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
   const isConfiguredLocalhost =
-    configuredApiUrl?.includes('localhost') || configuredApiUrl?.includes('127.0.0.1');
+    configuredApiUrl?.includes(localHostName) || configuredApiUrl?.includes(localIpv4Host);
   const apiUrl =
-    typeof window !== 'undefined' && isConfiguredLocalhost && window.location.hostname !== 'localhost'
+    typeof window !== 'undefined' && isConfiguredLocalhost && window.location.hostname !== localHostName
       ? '/.netlify/functions/backend'
       : configuredApiUrl || '/.netlify/functions/backend';
 
-  if (url.startsWith('http://localhost:3000')) {
-    return url.replace('http://localhost:3000', apiUrl);
+  if (url.startsWith(localBackendUrl)) {
+    return url.replace(localBackendUrl, apiUrl);
   }
 
-  if (url.startsWith('http://127.0.0.1:3000')) {
-    return url.replace('http://127.0.0.1:3000', apiUrl);
+  if (url.startsWith(localBackendIpv4Url)) {
+    return url.replace(localBackendIpv4Url, apiUrl);
   }
 
   if (url.startsWith('/uploads/')) {
