@@ -1,4 +1,5 @@
 'use client';
+import { useState } from 'react';
 import { CheckCircle2, ImageIcon, Package, ShoppingBag, Sparkles } from 'lucide-react';
 import { formatProductPrice } from '@/lib/product-pricing';
 import type { Product, Promotion } from '@/types';
@@ -20,6 +21,8 @@ export function BeautyProductCard({
 }: BeautyProductCardProps) {
   const image = getProductImage(product);
   const brandLogo = getPublicAssetUrl(product.brand?.logo);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [brandLogoFailed, setBrandLogoFailed] = useState(false);
   const price = formatProductPrice(product, exchangeRate);
   const activePromotion = promotions.find(
     (promotion) => promotion.productId === product.id || !promotion.productId,
@@ -29,10 +32,13 @@ export function BeautyProductCard({
   return (
     <article className="group flex h-full min-w-0 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#111827]/90 shadow-2xl shadow-black/20 transition duration-300 hover:-translate-y-1 hover:border-purple-400/50">
       <div className={`relative bg-[#F8F5F0] ${compact ? 'aspect-[4/3]' : 'aspect-square'}`}>
-        {image ? (
+        {image && !imageFailed ? (
           <img
             src={image}
             alt={product.name}
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageFailed(true)}
             className="h-full w-full object-contain p-5 transition duration-300 group-hover:scale-[1.03]"
           />
         ) : (
@@ -54,10 +60,13 @@ export function BeautyProductCard({
       <div className="flex flex-1 flex-col gap-4 p-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-purple-300">
-            {brandLogo ? (
+            {brandLogo && !brandLogoFailed ? (
               <img
                 src={brandLogo}
                 alt={product.brand?.name ?? 'Marca Beauty Hub'}
+                loading="lazy"
+                decoding="async"
+                onError={() => setBrandLogoFailed(true)}
                 className="h-4 w-4 rounded-full object-cover"
               />
             ) : null}

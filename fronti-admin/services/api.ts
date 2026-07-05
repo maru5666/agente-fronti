@@ -593,6 +593,11 @@ export const frontiApi = {
     fileUrl?: string;
     imageUrl?: string;
     paymentReference?: string;
+    conversationContext?: {
+      lastNeed?: string | null;
+      lastSkinType?: string | null;
+      lastProductName?: string | null;
+    };
   }) => {
     const payload = removeEmptyValues(data);
 

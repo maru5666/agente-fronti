@@ -51,6 +51,11 @@ type OrderStep =
   | 'final_confirmation';
 
 type PaymentMethodChoice = 'efectivo' | 'transferencia';
+type ConversationMemory = {
+  lastNeed?: string | null;
+  lastSkinType?: string | null;
+  lastProductName?: string | null;
+};
 
 const quickActions = ['catálogo', 'piel grasa', 'manchas', 'acné', 'protector solar'];
 const demoPurple = '#8B5CF6';
@@ -86,6 +91,7 @@ export default function DemoFronttiAiPage() {
   const [visibleError, setVisibleError] = useState<string | null>(null);
   const [headerTime, setHeaderTime] = useState('');
   const [customerName] = useState('Cliente demo');
+  const [conversationMemory, setConversationMemory] = useState<ConversationMemory>({});
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const proofInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -117,6 +123,8 @@ export default function DemoFronttiAiPage() {
     setInput('');
     setVisibleError(null);
     addUserMessage(message);
+    const nextMemory = buildConversationMemory(message, conversationMemory);
+    setConversationMemory(nextMemory);
 
     if (await handleDemoFlow(message)) {
       return;
@@ -136,6 +144,7 @@ export default function DemoFronttiAiPage() {
           senderPhone: BEAUTY_HUB_DEMO_PHONE,
           customerPhone: BEAUTY_HUB_DEMO_PHONE,
           message,
+          conversationContext: nextMemory,
         });
 
         addFronttiMessage(reply.response);
@@ -242,6 +251,7 @@ export default function DemoFronttiAiPage() {
 
   function showProductConfirmation(product: Product) {
     setSelectedProduct(product);
+    setConversationMemory((current) => ({ ...current, lastProductName: product.name }));
     setShowCatalog(false);
     setOrderStep('confirm_product');
     const price = formatProductPrice(product, bcvUsdRate);
@@ -349,9 +359,7 @@ export default function DemoFronttiAiPage() {
           console.error('[Demo Frontti] Error compartiendo ubicación:', locationError);
         }
         setVisibleError(
-          isGeolocationError(locationError)
-            ? 'No pude acceder a tu ubicación. Intenta nuevamente o escribe tu dirección.'
-            : 'No pude procesar la ubicación. Intenta nuevamente.',
+          getLocationErrorMessage(locationError),
         );
         setLastFailedAction(() => run);
       } finally {
@@ -878,17 +886,82 @@ function getProductTags(product: Product) {
 }
 
 function getCurrentPosition() {
-  return new Promise<GeolocationPosition>((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 12000,
-      maximumAge: 30000,
+  return getCurrentPositionAttempt({
+    enableHighAccuracy: true,
+    timeout: 18000,
+    maximumAge: 0,
+  }).catch((firstError) => {
+    if (isPermissionDenied(firstError)) {
+      throw firstError;
+    }
+
+    return getCurrentPositionAttempt({
+      enableHighAccuracy: false,
+      timeout: 25000,
+      maximumAge: 300000,
     });
   });
 }
 
-function isGeolocationError(error: unknown) {
+function getCurrentPositionAttempt(options: PositionOptions) {
+  return new Promise<GeolocationPosition>((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, options);
+  });
+}
+
+function isPermissionDenied(error: unknown) {
+  return isGeolocationError(error) && error.code === GeolocationPositionError.PERMISSION_DENIED;
+}
+
+function isGeolocationError(error: unknown): error is GeolocationPositionError {
   return typeof error === 'object' && error !== null && 'code' in error;
+}
+
+function getLocationErrorMessage(error: unknown) {
+  if (!isGeolocationError(error)) {
+    return 'No pude procesar la ubicación. Escribe tu dirección y calculo el delivery.';
+  }
+
+  if (error.code === GeolocationPositionError.PERMISSION_DENIED) {
+    return 'Safari no autorizó la ubicación. Puedes activar el permiso o escribir tu dirección y calculo el delivery.';
+  }
+
+  if (error.code === GeolocationPositionError.TIMEOUT) {
+    return 'La ubicación tardó demasiado. Escribe tu dirección o intenta compartirla otra vez.';
+  }
+
+  return 'No recibí una ubicación precisa. Escribe tu dirección y calculo el delivery.';
+}
+
+function detectNeedFromMessage(value: string) {
+  const normalized = normalize(value);
+  if (/mancha|melasma|tono|luminosidad|post acne|postacne/.test(normalized)) return 'manchas';
+  if (/acne|brote|granito|espinilla|piel grasa|grasa|poro|punto negro/.test(normalized)) return 'acné y piel grasa';
+  if (/rosacea|rosacea|rojeces|rojez|sensible|irritacion/.test(normalized)) return 'piel sensible o rosácea';
+  if (/resequedad|seca|hidrat|barrera/.test(normalized)) return 'resequedad e hidratación';
+  if (/protector|solar|spf/.test(normalized)) return 'protector solar';
+  if (/rutina|skincare|cara|rostro/.test(normalized)) return 'rutina facial';
+  return null;
+}
+
+function detectSkinTypeFromMessage(value: string) {
+  const normalized = normalize(value);
+  if (/piel grasa|grasa/.test(normalized)) return 'grasa';
+  if (/piel seca|seca/.test(normalized)) return 'seca';
+  if (/mixta/.test(normalized)) return 'mixta';
+  if (/sensible|rosacea|rojeces|rojez/.test(normalized)) return 'sensible';
+  return null;
+}
+
+function buildConversationMemory(message: string, current: ConversationMemory): ConversationMemory {
+  const need = detectNeedFromMessage(message);
+  const skinType = detectSkinTypeFromMessage(message);
+
+  return {
+    ...current,
+    lastNeed: need ?? current.lastNeed,
+    lastSkinType: skinType ?? current.lastSkinType,
+  };
 }
 
 function isCatalogIntent(message: string) {

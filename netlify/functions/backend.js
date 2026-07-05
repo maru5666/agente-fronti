@@ -220,82 +220,222 @@ function isLocalUrl(url) {
 
 function composeFrontiReply(body) {
   const message = normalizeText(body.message || '');
+  const context = body.conversationContext || {};
+  const contextualNeed = detectNeed(message) || normalizeText(context.lastNeed || '');
+  const skinType = detectSkinType(message) || normalizeText(context.lastSkinType || '');
 
-  if (!message || /^(hola|buenas|buenos dias|buen dia|hey)$/i.test(message)) {
-    return '¡Hola! 😊 ¿Qué estás buscando hoy para tu piel?';
+  if (!message || /^(hola|buenas|buenos dias|buen dia|hey|epa|holi)$/i.test(message)) {
+    return '\u00a1Hola! \ud83d\ude0a \u00bfQu\u00e9 est\u00e1s buscando mejorar hoy en tu piel?';
   }
 
-  if (/catalogo|productos|opciones|que tienen|qué tienen/.test(message)) {
-    return 'Claro, te muestro el catálogo real de Beauty Hub. Puedes elegir un producto y lo aparto para tu pedido.';
+  if (/presupuesto|dolares|barato|economico|premium/.test(message)) {
+    return recommendByBudget(message);
+  }
+
+  if (contextualNeed) {
+    const need = getNeedConfig(contextualNeed);
+    return recommendByNeed(need.label, need.tokens, skinType, need.key);
+  }
+
+  const brandMatches = findBrandProducts(message);
+  if (brandMatches.length) {
+    return composeBrandReply(brandMatches);
   }
 
   const matched = findProduct(message);
   if (matched) {
-    return [
-      `Sí, tenemos ${matched.name}${matched.brand?.name ? ` de ${matched.brand.name}` : ''}.`,
-      `Precio: $${formatMoney(matched.priceUsd)} USD / Bs. ${formatBs(Number(matched.priceUsd) * Number(BCV_RATE.usdRate))}.`,
-      `Stock: ${matched.stock} unidades.`,
-      '¿Confirmas que quieres agregar este producto al pedido?',
-    ].join('\n');
+    return composeProductReply(matched);
   }
 
-  if (/mancha|melasma|tono|luminosidad|post acne|postacne/.test(message)) {
-    return recommendByNeed('manchas', ['mancha', 'luminos', 'protector', 'niacinamida', 'vitamina', 'tono']);
+  if (/catalogo|productos|opciones|que tienen|muestrame/.test(message) && !contextualNeed) {
+    return 'Claro. Tenemos el cat\u00e1logo de Beauty Hub conectado. Puedes preguntarme por una marca, un producto o una necesidad de tu piel y te muestro opciones reales con precio y stock.';
   }
 
-  if (/acne|acné|brote|granito|piel grasa|grasa/.test(message)) {
-    return recommendByNeed('piel con tendencia acneica o grasa', ['acne', 'acné', 'grasa', 'poro', 'imperfeccion', 'centella']);
-  }
-
-  if (/resequedad|seca|hidrat|barrera|sensible|irrit/.test(message)) {
-    return recommendByNeed('hidratación y barrera cutánea', ['hidrat', 'sequedad', 'barrera', 'sensible', 'calmar']);
-  }
-
-  return 'Te puedo ayudar con catálogo, precios, disponibilidad, recomendaciones de skincare, pagos y delivery. ¿Qué producto o necesidad quieres revisar?';
+  return 'S\u00ed, te ayudo. Para recomendarte bien, dime qu\u00e9 quieres mejorar: manchas, acn\u00e9, piel grasa, resequedad, sensibilidad, ros\u00e1cea, protector solar o una rutina b\u00e1sica.';
 }
 
-function recommendByNeed(need, tokens) {
+function composeProductReply(product) {
+  const description = shortDescription(product);
+  return [
+    'S\u00ed, tenemos ' + product.name + (product.brand?.name ? ' de ' + product.brand.name : '') + '.',
+    description ? 'Por lo que indica el cat\u00e1logo, ' + description : null,
+    'Precio: $' + formatMoney(product.priceUsd) + ' USD / Bs. ' + formatBs(Number(product.priceUsd) * Number(BCV_RATE.usdRate)) + '.',
+    'Stock: ' + product.stock + ' unidades.',
+    '\u00bfConfirmas que quieres agregar este producto al pedido?',
+  ].filter(Boolean).join('\n');
+}
+
+function composeBrandReply(products) {
+  const brand = products[0]?.brand?.name || 'esa marca';
+  const productLines = products.slice(0, 3).map((product, index) => {
+    return (index + 1) + '. ' + product.name + ' - $' + formatMoney(product.priceUsd) + ' USD / Bs. ' + formatBs(Number(product.priceUsd) * Number(BCV_RATE.usdRate)) + '. Stock: ' + product.stock + '.';
+  });
+  return ['S\u00ed, trabajamos ' + brand + '. Encontr\u00e9 estas opciones disponibles:', '', ...productLines, '', '\u00bfQuieres que te aparte alguna o prefieres que compare cu\u00e1l va mejor para tu piel?'].join('\n');
+}
+
+function recommendByNeed(need, tokens, skinType, needKey) {
   const candidates = PRODUCTS
     .filter((product) => product.isActive && product.stock > 0)
-    .map((product) => ({ product, score: scoreProduct(product, tokens) }))
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
+    .map((product) => ({ product, score: scoreProduct(product, tokens, skinType, needKey) }))
+    .filter((item) => item.score >= 5)
+    .sort((a, b) => b.score - a.score || Number(a.product.priceUsd) - Number(b.product.priceUsd))
     .slice(0, 3)
-    .map(({ product }, index) => {
-      return `${index + 1}. ${product.name}${product.brand?.name ? ` de ${product.brand.name}` : ''} — $${formatMoney(product.priceUsd)} USD / Bs. ${formatBs(Number(product.priceUsd) * Number(BCV_RATE.usdRate))}. Stock: ${product.stock}.`;
+    .map(({ product, score }, index) => {
+      return (index + 1) + '. ' + product.name + (product.brand?.name ? ' de ' + product.brand.name : '') + '\n   ' + buildReason(product, needKey, score) + '\n   $' + formatMoney(product.priceUsd) + ' USD / Bs. ' + formatBs(Number(product.priceUsd) * Number(BCV_RATE.usdRate)) + '. Stock: ' + product.stock + '.';
     });
 
   if (!candidates.length) {
-    return `Puedo orientarte con ${need}, pero necesito revisar una opción más específica del catálogo. ¿Tu piel es grasa, seca, mixta o sensible?`;
+    return 'Puedo orientarte con ' + need + ', pero no veo una opci\u00f3n claramente relacionada y disponible en este momento. Si quieres, reviso alternativas por presupuesto o por tipo de piel.';
   }
 
-  return [`Para ${need}, estas opciones disponibles tienen más sentido:`, '', ...candidates, '', '¿Cuál de estas opciones prefieres?'].join('\n');
+  const intro = skinType ? 'Para ' + need + ' en piel ' + skinType + ', revis\u00e9 el inventario y priorizar\u00eda estas opciones:' : 'Para ' + need + ', revis\u00e9 el inventario y estas opciones tienen m\u00e1s sentido:';
+  return [intro, '', ...candidates, '', '\u00bfCu\u00e1l de estas opciones prefieres que agregue al pedido?'].join('\n');
 }
 
-function scoreProduct(product, tokens) {
-  const haystack = normalizeText([
+function recommendByBudget(message) {
+  const match = message.match(/(\d+(?:[.,]\d+)?)/);
+  const budget = match ? Number(match[1].replace(',', '.')) : 0;
+  const available = PRODUCTS
+    .filter((product) => product.isActive && product.stock > 0 && (!budget || Number(product.priceUsd) <= budget))
+    .sort((a, b) => Number(a.priceUsd) - Number(b.priceUsd))
+    .slice(0, 3);
+  if (!available.length) return 'Con ese presupuesto no veo una opci\u00f3n clara disponible ahora mismo. Si puedes subir un poco el rango, reviso alternativas mejores.';
+  return ['S\u00ed. Dentro de ese presupuesto revisar\u00eda estas opciones disponibles:', '', ...available.map((product, index) => (index + 1) + '. ' + product.name + ' - $' + formatMoney(product.priceUsd) + ' USD. Stock: ' + product.stock + '.'), '', '\u00bfQuieres que compare alguna por beneficio?'].join('\n');
+}
+
+function getNeedConfig(need) {
+  const normalized = normalizeText(need);
+  const configs = [
+    { key: 'manchas', label: 'manchas y tono desigual', tokens: ['mancha', 'melasma', 'tono', 'luminos', 'vitamina c', 'niacinamida', 'protector', 'despigment', 'post acne', 'postacne', 'arbutin', 'txa'] },
+    { key: 'acne', label: 'acn\u00e9, brotes o piel grasa', tokens: ['acne', 'brote', 'granito', 'grasa', 'poro', 'punto negro', 'imperfeccion', 'sebo', 'niacinamida', 'centella', 'limpiador'] },
+    { key: 'rosacea', label: 'ros\u00e1cea, rojez o sensibilidad', tokens: ['rosacea', 'rojez', 'sensible', 'irrit', 'calmar', 'centella', 'pantenol', 'barrera', 'suave'] },
+    { key: 'hidratacion', label: 'resequedad e hidrataci\u00f3n', tokens: ['hidrat', 'seca', 'resequedad', 'barrera', 'ceramida', 'hialuronico', 'calmar', 'repar'] },
+    { key: 'protector', label: 'protecci\u00f3n solar', tokens: ['protector', 'solar', 'spf', 'uv', 'oil control', 'bloqueador'] },
+    { key: 'rutina', label: 'rutina facial b\u00e1sica', tokens: ['limpiador', 'hidrat', 'protector', 'serum', 'toner', 'crema'] },
+  ];
+  return configs.find((config) => normalized.includes(config.key) || config.tokens.some((token) => normalized.includes(normalizeText(token)))) || configs[5];
+}
+
+function detectNeed(message) {
+  if (/mancha|melasma|tono|luminosidad|post acne|postacne/.test(message)) return 'manchas';
+  if (/acne|brote|granito|espinilla|piel grasa|grasa|poro|punto negro/.test(message)) return 'acne';
+  if (/rosacea|rojez|rojeces|sensible|irrit/.test(message)) return 'rosacea';
+  if (/resequedad|seca|hidrat|barrera/.test(message)) return 'hidratacion';
+  if (/protector|solar|spf|bloqueador/.test(message)) return 'protector';
+  if (/rutina|skincare|cara|rostro/.test(message)) return 'rutina';
+  return null;
+}
+
+function detectSkinType(message) {
+  if (/piel grasa|grasa/.test(message)) return 'grasa';
+  if (/piel seca|seca/.test(message)) return 'seca';
+  if (/mixta/.test(message)) return 'mixta';
+  if (/sensible|rosacea|rojez/.test(message)) return 'sensible';
+  return null;
+}
+
+function scoreProduct(product, tokens, skinType, needKey) {
+  const haystack = productHaystack(product);
+  let score = 0;
+  for (const token of tokens) {
+    if (haystack.includes(normalizeText(token))) score += 6;
+  }
+  if (skinType && haystack.includes(normalizeText(skinType))) score += 8;
+  if (needKey === 'rosacea' && /retinol|retinal|acido|peeling/.test(haystack)) score -= 24;
+  if (needKey === 'manchas' && /protector|solar|spf/.test(haystack)) score += 5;
+  if (needKey === 'acne' && /limpiador|cleanser|niacinamida|centella/.test(haystack)) score += 5;
+  if (Number(product.stock) > 2) score += 2;
+  return score;
+}
+
+function buildReason(product, needKey, score) {
+  const text = productHaystack(product);
+  if (needKey === 'manchas' && /protector|solar|spf/.test(text)) return 'Ayuda como apoyo clave para prevenir que las manchas se marquen m\u00e1s.';
+  if (needKey === 'manchas' && /vitamina|niacinamida|tono|luminos/.test(text)) return 'Tiene relaci\u00f3n con luminosidad, tono uniforme o apoyo para marcas post-acn\u00e9.';
+  if (needKey === 'acne' && /limpiador|cleanser/.test(text)) return 'Funciona como primer paso para controlar grasa, limpieza y textura.';
+  if (needKey === 'acne' && /centella|niacinamida|poro|grasa/.test(text)) return 'Tiene se\u00f1ales \u00fatiles para brotes, grasa o poros visibles.';
+  if (needKey === 'rosacea') return 'La priorizo porque el cat\u00e1logo la relaciona con calma, barrera o piel sensible.';
+  if (needKey === 'hidratacion') return 'Tiene relaci\u00f3n con hidrataci\u00f3n, reparaci\u00f3n o barrera cut\u00e1nea.';
+  if (needKey === 'protector') return 'Es una opci\u00f3n orientada a protecci\u00f3n solar dentro del cat\u00e1logo.';
+  return score > 12 ? 'Es de las opciones m\u00e1s relacionadas en el inventario.' : 'Con la informaci\u00f3n disponible, parece una opci\u00f3n cercana a lo que buscas.';
+}
+
+function productHaystack(product) {
+  return normalizeText([
     product.name,
     product.brand?.name,
     product.category,
     product.description,
     ...(product.tags || []),
+    product.ingredients,
+    product.benefits,
+    product.skinType,
   ].filter(Boolean).join(' '));
+}
 
-  return tokens.reduce((score, token) => score + (haystack.includes(normalizeText(token)) ? 1 : 0), 0);
+function shortDescription(product) {
+  const text = String(product.description || '').trim();
+  if (!text) return '';
+  return text.length > 150 ? text.slice(0, 147) + '...' : text;
+}
+
+function scoreSimilarity(a, b) {
+  const left = normalizeText(a);
+  const right = normalizeText(b);
+  if (!left || !right) return 0;
+  if (right.includes(left) || left.includes(right)) return 1;
+  const distance = levenshtein(left, right);
+  return 1 - distance / Math.max(left.length, right.length, 1);
+}
+
+function levenshtein(a, b) {
+  const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
+function findBrandProducts(message) {
+  const normalized = normalizeSearchText(message);
+  const brands = [...new Set(PRODUCTS.map((product) => product.brand?.name).filter(Boolean))];
+  const brand = brands.find((name) => {
+    const normalizedBrand = normalizeSearchText(name);
+    return normalized.includes(normalizedBrand) || normalizedBrand.split(/\s+/).some((part) => part.length > 2 && normalized.includes(part)) || scoreSimilarity(normalized, normalizedBrand) > 0.72;
+  });
+  if (!brand) return [];
+  return PRODUCTS.filter((product) => product.isActive && product.stock > 0 && normalizeSearchText(product.brand?.name || '') === normalizeSearchText(brand));
 }
 
 function findProduct(message) {
-  const normalized = normalizeText(message);
-  const direct = PRODUCTS.find((product) => {
-    const fields = normalizeText(`${product.name} ${product.brand?.name || ''} ${product.category || ''} ${product.description || ''}`);
-    return product.isActive && product.stock > 0 && fields.split(/\s+/).some((word) => word.length > 3 && normalized.includes(word));
-  });
-
-  if (direct) return direct;
-
-  return PRODUCTS.find((product) => product.isActive && product.stock > 0 && normalizeText(product.name).includes(normalized));
+  const normalized = normalizeSearchText(message)
+    .replace(/jabon/g, 'jabon limpiador cleanser')
+    .replace(/arencia/g, 'arencia rice mochi cleanser');
+  const queryTokens = normalized.split(/\s+/).filter((word) => word.length > 2 && !['quiero', 'comprar', 'tienes', 'precio', 'cuesta', 'producto', 'productos'].includes(word));
+  let best = null;
+  for (const product of PRODUCTS) {
+    if (!product.isActive || product.stock <= 0) continue;
+    const haystack = productHaystack(product);
+    let score = 0;
+    for (const token of queryTokens) {
+      if (haystack.includes(token)) score += 10;
+      score += Math.max(...haystack.split(/\s+/).map((word) => scoreSimilarity(token, word))) * 4;
+    }
+    if (!best || score > best.score) best = { product, score };
+  }
+  return best && best.score >= 12 ? best.product : null;
 }
 
+function normalizeSearchText(value) {
+  return normalizeText(value).replace(/[^\w\s]/g, ' ').replace(/\s+/g, ' ').trim();
+}
 function composeDeliveryLocation(latitude, longitude) {
   const estimate = calculateDelivery(latitude, longitude, 'Ubicación compartida');
   const address = {
@@ -471,4 +611,3 @@ function round(value) {
 function cryptoId(prefix) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
-
