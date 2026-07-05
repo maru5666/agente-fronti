@@ -12,11 +12,6 @@ exports.handler = async (event) => {
     return response(204, null);
   }
 
-  const proxied = await tryProxyToBackend(event);
-  if (proxied) {
-    return proxied;
-  }
-
   try {
     const method = event.httpMethod;
     const route = normalizeRoute(event.path);
@@ -186,6 +181,11 @@ exports.handler = async (event) => {
         },
         response: 'Recibí el comprobante. Lo enviaré a verificación y te avisaremos apenas sea confirmado.',
       });
+    }
+
+    const proxied = await tryProxyToBackend(event);
+    if (proxied) {
+      return proxied;
     }
 
     return response(404, { message: 'Ruta demo no encontrada.' });
