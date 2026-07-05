@@ -7,6 +7,7 @@
     "fronti-backend"
   ],
   "scripts": {
+    "dev": "node scripts/dev-local.js",
     "lint": "npm --prefix fronti-admin run lint && npm run check:encoding",
     "type-check": "npm --prefix fronti-admin run type-check && npm --prefix fronti-backend run type-check",
     "build": "node scripts/build-workspace.js",
@@ -18,8 +19,5 @@
     "build:admin": "node scripts/build-admin.js",
     "dev:backend": "npm --prefix fronti-backend run start:dev",
     "dev:admin": "npm --prefix fronti-admin run dev -- -p 3002"
-  },
-  "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.15.12"
   }
 }

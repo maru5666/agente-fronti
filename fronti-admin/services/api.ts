@@ -126,7 +126,17 @@ function getApiBaseUrl() {
   const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, '');
 
   if (!configuredUrl) {
-    return '/api/backend';
+    if (typeof window !== 'undefined') {
+      const isBrowserOnLocalhost = ['localhost', '127.0.0.1', '::1'].includes(
+        window.location.hostname,
+      );
+
+      if (isBrowserOnLocalhost) {
+        return 'http://localhost:3000';
+      }
+    }
+
+    return 'http://localhost:3000';
   }
 
   if (typeof window !== 'undefined') {
@@ -137,7 +147,7 @@ function getApiBaseUrl() {
       configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1');
 
     if (isConfiguredLocalhost && !isBrowserOnLocalhost) {
-      return '/api/backend';
+      return configuredUrl;
     }
   }
 
