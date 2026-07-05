@@ -39,6 +39,15 @@ const emptyData: DemoData = {
   bcvRate: null,
 };
 
+type CachedBeautyHubDemo = {
+  company: Company;
+  products: Product[];
+  promotions?: Promotion[];
+  zones?: DeliveryZone[];
+  payments?: PaymentMethod[];
+  bcv?: BcvRate;
+};
+
 export function useBeautyHubDemo() {
   const [data, setData] = useState<DemoData>(emptyData);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,9 +80,18 @@ export function useBeautyHubDemo() {
       if (process.env.NODE_ENV !== 'production') {
         console.error('[Beauty Hub demo] No se pudo cargar la demo:', loadError);
       }
+      try {
+        const cached = await loadCachedBeautyHubDemo();
+        setData(cached);
+        setError(null);
+      } catch (cacheError) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.error('[Beauty Hub demo] No se pudo cargar la caché pública:', cacheError);
+        }
 
-      setData(emptyData);
-      setError('No pudimos cargar Beauty Hub. Verifica que el servidor esté activo e intenta nuevamente.');
+        setData(emptyData);
+        setError('No pudimos cargar Beauty Hub. Verifica la conexión e intenta nuevamente.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -120,5 +138,28 @@ export function useBeautyHubDemo() {
     isLoading,
     error,
     reload: load,
+  };
+}
+
+async function loadCachedBeautyHubDemo(): Promise<DemoData> {
+  const response = await fetch('/demo/beautyhub-demo-data.json', {
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(`No se pudo leer caché demo: ${response.status}`);
+  }
+
+  const cached = (await response.json()) as CachedBeautyHubDemo;
+  const company = cached.company;
+  const products = (cached.products ?? []).filter((product) => product.companyId === company.id);
+
+  return {
+    company,
+    products,
+    promotions: cached.promotions ?? [],
+    deliveryZones: cached.zones ?? [],
+    paymentMethods: cached.payments ?? [],
+    bcvRate: cached.bcv ?? null,
   };
 }

@@ -36,6 +36,14 @@ exports.handler = async (event) => {
       return response(200, COMPANY);
     }
 
+    if (method === 'GET' && (route === '/api/businesses' || route === '/businesses')) {
+      return response(200, [COMPANY]);
+    }
+
+    if (method === 'GET' && (route === '/api/businesses/beautyhub' || route === '/businesses/beautyhub')) {
+      return response(200, COMPANY);
+    }
+
     if (method === 'GET' && route === '/companies/access/beautyhub') {
       return response(200, COMPANY);
     }
@@ -54,6 +62,24 @@ exports.handler = async (event) => {
 
     if (method === 'GET' && route === `/products/company/${COMPANY.id}`) {
       return response(200, PRODUCTS);
+    }
+
+    if (method === 'GET' && (route === '/api/products' || route === '/products')) {
+      return response(200, PRODUCTS.filter((product) => product.companyId === COMPANY.id));
+    }
+
+    if (method === 'GET' && (route === '/api/inventory' || route === '/inventory')) {
+      return response(200, PRODUCTS.filter((product) => product.companyId === COMPANY.id).map((product) => ({
+        id: product.id,
+        companyId: product.companyId,
+        productId: product.id,
+        productName: product.name,
+        brand: product.brand?.name || null,
+        category: product.category,
+        stock: product.stock,
+        minStock: product.minStock,
+        isActive: product.isActive,
+      })));
     }
 
     if (method === 'GET' && route === `/products/company/${COMPANY.id}/low-stock`) {
@@ -112,6 +138,13 @@ exports.handler = async (event) => {
       });
     }
 
+    if (method === 'POST' && (route === '/api/chat' || route === '/chat')) {
+      return response(201, {
+        response: composeFrontiReply(body),
+        messageId: cryptoId('msg'),
+      });
+    }
+
     if (method === 'POST' && route === '/delivery/location') {
       const latitude = Number(body.latitude);
       const longitude = Number(body.longitude);
@@ -120,6 +153,16 @@ exports.handler = async (event) => {
       }
 
       return response(201, composeDeliveryLocation(latitude, longitude));
+    }
+
+    if (method === 'POST' && (route === '/api/delivery' || route === '/delivery')) {
+      const latitude = Number(body.latitude);
+      const longitude = Number(body.longitude);
+      if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        return response(201, composeDeliveryLocation(latitude, longitude));
+      }
+
+      return response(201, composeDeliveryEstimate(body));
     }
 
     if (method === 'POST' && route === '/delivery-zones/estimate') {
