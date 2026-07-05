@@ -136,7 +136,7 @@ function getApiBaseUrl() {
       }
     }
 
-    return '/api/backend';
+    return '/.netlify/functions/backend';
   }
 
   if (typeof window !== 'undefined') {
@@ -147,7 +147,7 @@ function getApiBaseUrl() {
       configuredUrl.includes('localhost') || configuredUrl.includes('127.0.0.1');
 
     if (isConfiguredLocalhost && !isBrowserOnLocalhost) {
-      return '/api/backend';
+      return '/.netlify/functions/backend';
     }
   }
 
