@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build:admin"
+  command = "NEXT_PUBLIC_API_URL=/.netlify/functions/backend npm run build:admin"
   publish = "fronti-admin/.next"
   functions = "netlify/functions"
 
